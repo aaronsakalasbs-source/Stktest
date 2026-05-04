@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pamodzi Pay</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 24px; color: #fff;
+  }
+
+  .card {
+    background: rgba(255,255,255,0.07);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 24px; padding: 36px 28px;
+    width: 100%; max-width: 380px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+  }
+  .logo {
+    width: 60px; height: 60px; border-radius: 50%;
+    background: linear-gradient(135deg, #6c63ff, #00d4aa);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; margin: 0 auto 18px;
+    box-shadow: 0 0 28px rgba(108,99,255,0.6);
+    animation: glow 3s ease-in-out infinite alternate;
+  }
+  @keyframes glow {
+    from { box-shadow: 0 0 18px rgba(108,99,255,0.5); }
+    to   { box-shadow: 0 0 40px rgba(0,212,170,0.7); }
+  }
+  h1  { text-align: center; font-size: 21px; font-weight: 800; margin-bottom: 4px; }
+  .sub{ text-align: center; font-size: 13px; color: rgba(255,255,255,0.45); margin-bottom: 26px; }
+
+  .field { margin-bottom: 14px; }
+  label  { display: block; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.45); margin-bottom: 7px; letter-spacing: 0.7px; text-transform: uppercase; }
+  input  {
+    width: 100%; padding: 13px 15px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; color: #fff;
+    font-family: inherit; font-size: 16px; outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  input:focus { border-color: #6c63ff; box-shadow: 0 0 0 3px rgba(108,99,255,0.22); }
+  input::placeholder { color: rgba(255,255,255,0.22); }
+  .hint { font-size: 11px; color: rgba(255,255,255,0.3); margin-top: 5px; }
+
+  .pay-btn {
+    width: 100%; margin-top: 6px; padding: 15px;
+    background: linear-gradient(135deg, #6c63ff, #00d4aa);
+    border: none; border-radius: 14px;
+    color: #fff; font-family: inherit; font-size: 16px; font-weight: 700;
+    cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    box-shadow: 0 6px 24px rgba(108,99,255,0.45);
+  }
+  .pay-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(108,99,255,0.6); }
+  .pay-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .spin {
+    width: 20px; height: 20px;
+    border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff;
+    border-radius: 50%; animation: spin 0.7s linear infinite; display: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- STATUS ---- */
+  #status-area { display: none; margin-top: 22px; text-align: center; }
+  #status-area.show { display: block; animation: fadeUp 0.3s ease; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .big-spin {
+    width: 46px; height: 46px; margin: 0 auto 12px;
+    border: 4px solid rgba(255,255,255,0.1); border-top-color: #6c63ff;
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  .cd-wrap { position: relative; width: 68px; height: 68px; margin: 0 auto 12px; display: none; }
+  .cd-svg   { width: 68px; height: 68px; transform: rotate(-90deg); }
+  .cd-track { fill: none; stroke: rgba(255,255,255,0.07); stroke-width: 5; }
+  .cd-ring  { fill: none; stroke: #00d4aa; stroke-width: 5; stroke-linecap: round;
+    stroke-dasharray: 190; stroke-dashoffset: 0; transition: stroke-dashoffset 1s linear; }
+  .cd-num { position: absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:22px; font-weight:800; color:#00d4aa; }
+  #st-label { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  #st-sub   { font-size: 12px; color: rgba(255,255,255,0.4); }
+
+  /* ---- OVERLAY ---- */
+  .overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.82); z-index: 999;
+    align-items: center; justify-content: center;
+    padding: 20px; backdrop-filter: blur(10px);
+  }
+  .overlay.show { display: flex; animation: fadeIn 0.2s ease; }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+  /* ---- RESULT POPUP ---- */
+  .result-popup {
+    background: #1a1a2e;
+    border-radius: 22px; padding: 32px 24px 24px;
+    max-width: 360px; width: 100%; text-align: center;
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 28px 72px rgba(0,0,0,0.7);
+    animation: popIn 0.35s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes popIn { from{transform:scale(0.78);opacity:0} to{transform:scale(1);opacity:1} }
+  .rp-icon  { font-size: 54px; margin-bottom: 10px; display: block; }
+  .rp-title { font-size: 20px; font-weight: 800; margin-bottom: 18px; }
+  .rp-title.ok  { color: #00d4aa; }
+  .rp-title.bad { color: #ff6b6b; }
+
+  /* receipt rows */
+  .receipt-rows { text-align: left; margin-bottom: 20px; }
+  .r-row {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+    gap: 12px;
+  }
+  .r-row:last-child { border-bottom: none; }
+  .r-key   { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; }
+  .r-val   { font-size: 13px; font-weight: 700; color: #fff; text-align: right; word-break: break-all; }
+  .r-val.ok  { color: #00d4aa; }
+  .r-val.bad { color: #ff6b6b; }
+
+  .rp-btn {
+    width: 100%; padding: 13px; border: none; border-radius: 12px;
+    font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .rp-btn.ok  { background: rgba(0,212,170,0.15); color: #00d4aa; border: 1px solid rgba(0,212,170,0.3); }
+  .rp-btn.bad { background: rgba(255,107,107,0.15); color: #ff6b6b; border: 1px solid rgba(255,107,107,0.3); }
+  .rp-btn:hover { opacity: 0.8; }
+</style>
+</head>
+<body>
+
+<!-- Popup overlay -->
+<div class="overlay" id="overlay" onclick="if(event.target===this)closePopup()">
+  <div class="result-popup">
+    <span class="rp-icon"  id="rp-icon"></span>
+    <div  class="rp-title" id="rp-title"></div>
+    <div  class="receipt-rows" id="receipt-rows"></div>
+    <button class="rp-btn" id="rp-btn" onclick="closePopup()">Done</button>
+  </div>
+</div>
+
+<!-- Main card -->
+<div class="card">
+  <div class="logo">💳</div>
+  <h1>Pamodzi Pay</h1>
+  <p class="sub">Zambia Mobile Money · Sandbox</p>
+
+  <div class="field">
+    <label>Phone Number</label>
+    <input id="phone" type="tel" placeholder="260976543210" maxlength="12" inputmode="numeric" />
+    <div class="hint">Start with 260 · 12 digits · no spaces</div>
+  </div>
+  <div class="field">
+    <label>Amount (ZMW)</label>
+    <input id="amount" type="number" placeholder="0.00" min="1" step="0.01" inputmode="decimal" />
+  </div>
+
+  <button class="pay-btn" id="pay-btn" onclick="pay()">
+    <div class="spin" id="btn-spin"></div>
+    <span id="btn-txt">Pay Now</span>
+  </button>
+
+  <div id="status-area">
+    <div class="big-spin" id="big-spin"></div>
+    <div class="cd-wrap" id="cd-wrap">
+      <svg class="cd-svg" viewBox="0 0 64 64">
+        <circle class="cd-track" cx="32" cy="32" r="28"/>
+        <circle class="cd-ring"  id="cd-ring" cx="32" cy="32" r="28"/>
+      </svg>
+      <div class="cd-num" id="cd-num">7</div>
+    </div>
+    <div id="st-label">Sending STK push…</div>
+    <div id="st-sub">Please wait</div>
+  </div>
+</div>
+
+<script>
+  const BASE = "https://stk-push-test.onrender.com";
+  let cdTimer = null;
+
+  // auto-format phone
+  document.getElementById('phone').addEventListener('input', function () {
+    let v = this.value.replace(/\D/g, '');
+    if (v.startsWith('0')) v = '260' + v.slice(1);
+    if (v.length && !v.startsWith('260')) v = '260' + v;
+    this.value = v.slice(0, 12);
+  });
+
+  function setBusy(on) {
+    document.getElementById('pay-btn').disabled = on;
+    document.getElementById('btn-spin').style.display = on ? 'block' : 'none';
+    document.getElementById('btn-txt').textContent = on ? 'Processing…' : 'Pay Now';
+  }
+
+  function setStatus(label, sub) {
+    document.getElementById('st-label').textContent = label;
+    document.getElementById('st-sub').textContent   = sub;
+  }
+
+  function showStatus(on) {
+    document.getElementById('status-area').classList.toggle('show', on);
+  }
+
+  // ---- RECEIPT POPUP ----
+  function showReceipt(data) {
+    const ok = data.ok;
+    document.getElementById('rp-icon').textContent  = ok ? '✅' : '❌';
+    const title = document.getElementById('rp-title');
+    title.textContent = ok ? 'Payment Successful' : 'Payment Failed';
+    title.className   = 'rp-title ' + (ok ? 'ok' : 'bad');
+
+    const rows = [];
+    rows.push({ key: 'Status',  val: data.label,  cls: ok ? 'ok' : 'bad' });
+    if (data.detail) rows.push({ key: 'Details', val: data.detail, cls: '' });
+    if (data.phone)  rows.push({ key: 'Phone',   val: data.phone,  cls: '' });
+    if (data.amount) rows.push({ key: 'Amount',  val: `ZMW ${data.amount}`, cls: '' });
+    if (data.txnId)  rows.push({ key: 'Txn ID',  val: data.txnId,  cls: '' });
+    if (data.time)   rows.push({ key: 'Time',    val: data.time,   cls: '' });
+
+    document.getElementById('receipt-rows').innerHTML = rows.map(r =>
+      `<div class="r-row">
+         <span class="r-key">${r.key}</span>
+         <span class="r-val ${r.cls}">${r.val}</span>
+       </div>`
+    ).join('');
+
+    const btn = document.getElementById('rp-btn');
+    btn.className = 'rp-btn ' + (ok ? 'ok' : 'bad');
+
+    document.getElementById('overlay').classList.add('show');
+  }
+
+  function closePopup() {
+    document.getElementById('overlay').classList.remove('show');
+  }
+
+  // ---- COUNTDOWN ----
+  function startCountdown(secs, done) {
+    const ring   = document.getElementById('cd-ring');
+    const numEl  = document.getElementById('cd-num');
+    const bigSpin= document.getElementById('big-spin');
+    const cdWrap = document.getElementById('cd-wrap');
+    const circ   = 2 * Math.PI * 28;
+
+    ring.style.strokeDasharray  = circ;
+    ring.style.strokeDashoffset = 0;
+    bigSpin.style.display = 'none';
+    cdWrap.style.display  = 'block';
+    numEl.textContent = secs;
+    setStatus('STK push sent!', 'Customer should see a prompt on their phone…');
+
+    let left = secs;
+    cdTimer = setInterval(() => {
+      left--;
+      numEl.textContent = left;
+      ring.style.strokeDashoffset = circ * (1 - left / secs);
+      if (left <= 0) {
+        clearInterval(cdTimer);
+        cdWrap.style.display  = 'none';
+        bigSpin.style.display = 'block';
+        setStatus('Verifying payment…', 'Checking with Pamodzi Gateway');
+        done();
+      }
+    }, 1000);
+  }
+
+  // ---- MAIN PAY ----
+  async function pay() {
+    const phone  = document.getElementById('phone').value.trim();
+    const amount = document.getElementById('amount').value.trim();
+
+    if (!/^260\d{9}$/.test(phone)) {
+      showReceipt({ ok: false, label: 'Invalid Phone', detail: 'Must start with 260 and be 12 digits.\nExample: 260976543210' });
+      return;
+    }
+    if (!amount || parseFloat(amount) <= 0) {
+      showReceipt({ ok: false, label: 'Invalid Amount', detail: 'Please enter an amount greater than 0.' });
+      return;
+    }
+
+    document.getElementById('big-spin').style.display = 'block';
+    document.getElementById('cd-wrap').style.display  = 'none';
+    setStatus('Sending STK push…', 'Contacting Pamodzi Gateway');
+    showStatus(true);
+    setBusy(true);
+
+    try {
+      const res  = await fetch(`${BASE}/initiate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: phone, amount: parseFloat(amount), narration: 'Payment' })
+      });
+      const data = await res.json();
+
+      if (!data.ok) {
+        showStatus(false);
+        setBusy(false);
+        showReceipt(data);
+        return;
+      }
+
+      // Wait 7 seconds then verify
+      startCountdown(7, async () => {
+        try {
+          const vres  = await fetch(`${BASE}/verify?txnId=${encodeURIComponent(data.txnId)}&phoneNumber=${encodeURIComponent(phone)}`);
+          const vdata = await vres.json();
+
+          // merge amount/phone from initiate into verify result
+          vdata.amount = vdata.amount || parseFloat(amount).toFixed(2);
+          vdata.phone  = vdata.phone  || phone;
+
+          showStatus(false);
+          setBusy(false);
+          showReceipt(vdata);
+        } catch (e) {
+          showStatus(false);
+          setBusy(false);
+          showReceipt({ ok: false, label: 'Verify Error', detail: e.message || 'Could not verify payment.', phone, amount: parseFloat(amount).toFixed(2), txnId: data.txnId, time: new Date().toLocaleString() });
+        }
+      });
+
+    } catch (e) {
+      clearInterval(cdTimer);
+      showStatus(false);
+      setBusy(false);
+      showReceipt({ ok: false, label: 'Connection Error', detail: e.message || 'Could not reach the server. Check your connection.' });
+    }
+  }
+</script>
+</body>
+</html>
