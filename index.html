@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pamodzi Gateway — API Tester</title>
+  <style>
+    :root {
+      --green:  #00c853;
+      --red:    #ff1744;
+      --yellow: #ffd600;
+      --blue:   #2979ff;
+      --purple: #aa00ff;
+      --dark:   #0d0d1a;
+      --card:   #14142b;
+      --border: #2a2a4a;
+      --text:   #e8e8ff;
+      --muted:  #7878aa;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--dark);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Animated gradient header ── */
+    header {
+      background: linear-gradient(135deg, #1a0533, #001a66, #003322, #1a0533);
+      background-size: 400% 400%;
+      animation: gradientShift 8s ease infinite;
+      padding: 32px 20px 24px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+    @keyframes gradientShift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    header h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, #00e5ff, #aa00ff, #00e676, #ffd600);
+      background-size: 300% 100%;
+      animation: textShift 4s linear infinite;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    @keyframes textShift {
+      0%   { background-position: 0% 50%; }
+      100% { background-position: 300% 50%; }
+    }
+    header p {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin-top: 6px;
+    }
+    .server-badge {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 4px 14px;
+      border-radius: 20px;
+      background: rgba(0,200,83,0.15);
+      border: 1px solid var(--green);
+      color: var(--green);
+      font-size: 0.75rem;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* ── Layout ── */
+    main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 28px 16px 60px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: box-shadow 0.3s;
+    }
+    .card:hover { box-shadow: 0 0 24px rgba(100,100,255,0.12); }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 20px;
+      cursor: pointer;
+      user-select: none;
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.3s;
+    }
+    .card-header.open { border-color: var(--border); }
+
+    .card-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+    .card-title { flex: 1; }
+    .card-title h3 { font-size: 0.95rem; font-weight: 700; }
+    .card-title p  { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+
+    .method-badge {
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.05em;
+    }
+    .badge-post { background: rgba(170,0,255,0.2); color: #cc55ff; border: 1px solid #aa00ff; }
+    .badge-get  { background: rgba(0,200,83,0.15); color: #66ff99; border: 1px solid #00c853; }
+
+    .chevron {
+      color: var(--muted);
+      font-size: 0.8rem;
+      transition: transform 0.3s;
+    }
+    .chevron.open { transform: rotate(180deg); }
+
+    .card-body {
+      display: none;
+      padding: 20px;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .card-body.open { display: flex; }
+
+    /* ── Form fields ── */
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label {
+      font-size: 0.78rem;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .field input {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%;
+    }
+    .field input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(41,121,255,0.15);
+    }
+    .field input.error {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px rgba(255,23,68,0.15);
+      animation: shake 0.35s ease;
+    }
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20%       { transform: translateX(-6px); }
+      40%       { transform: translateX(6px); }
+      60%       { transform: translateX(-4px); }
+      80%       { transform: translateX(4px); }
+    }
+    .field-hint { font-size: 0.72rem; color: var(--muted); }
+    .field-error { font-size: 0.72rem; color: var(--red); display: none; }
+
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+
+    /* ── Buttons ── */
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 22px;
+      border-radius: 10px;
+      border: none;
+      font-size: 0.88rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--blue), var(--purple));
+      color: #fff;
+      box-shadow: 0 4px 18px rgba(41,121,255,0.35);
+    }
+    .btn-primary:hover:not(:disabled) {
+      box-shadow: 0 6px 24px rgba(41,121,255,0.5);
+      transform: translateY(-1px);
+    }
+    .btn-success {
+      background: linear-gradient(135deg, #00c853, #00897b);
+      color: #fff;
+      box-shadow: 0 4px 18px rgba(0,200,83,0.3);
+    }
+    .btn-success:hover:not(:disabled) { transform: translateY(-1px); }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #f9a825, #e65100);
+      color: #fff;
+      box-shadow: 0 4px 18px rgba(249,168,37,0.3);
+    }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .btn-outline:hover:not(:disabled) { border-color: var(--blue); color: var(--text); }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Response box ── */
+    .response-box {
+      display: none;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } }
+    .response-box.visible { display: block; }
+
+    .response-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+    .response-header.success { background: rgba(0,200,83,0.12); color: var(--green); }
+    .response-header.failed  { background: rgba(255,23,68,0.12);  color: var(--red); }
+    .response-header.error   { background: rgba(255,214,0,0.10);  color: var(--yellow); }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      animation: blink 1s ease-in-out 3;
+    }
+    .success .status-dot { background: var(--green); }
+    .failed  .status-dot { background: var(--red); }
+    .error   .status-dot { background: var(--yellow); }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
+    }
+
+    .response-body {
+      background: #0a0a18;
+      padding: 14px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.78rem;
+      color: #a0d0ff;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+
+    .interpretation {
+      padding: 10px 14px;
+      font-size: 0.78rem;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    /* ── Toast notifications ── */
+    #toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+    .toast {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 18px;
+      border-radius: 14px;
+      min-width: 260px;
+      max-width: 340px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      animation: toastIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      pointer-events: all;
+    }
+    .toast.removing { animation: toastOut 0.3s ease forwards; }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateX(120px) scale(0.8); }
+      to   { opacity: 1; transform: translateX(0)    scale(1); }
+    }
+    @keyframes toastOut {
+      from { opacity: 1; transform: translateX(0)    scale(1); }
+      to   { opacity: 0; transform: translateX(120px) scale(0.8); }
+    }
+
+    .toast-success {
+      background: rgba(0,50,20,0.92);
+      border: 1px solid var(--green);
+    }
+    .toast-failed {
+      background: rgba(60,0,10,0.92);
+      border: 1px solid var(--red);
+    }
+    .toast-error {
+      background: rgba(50,40,0,0.92);
+      border: 1px solid var(--yellow);
+    }
+    .toast-info {
+      background: rgba(0,10,50,0.92);
+      border: 1px solid var(--blue);
+    }
+
+    .toast-icon { font-size: 1.4rem; flex-shrink: 0; line-height: 1; }
+    .toast-content { flex: 1; }
+    .toast-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 3px; }
+    .toast-msg   { font-size: 0.75rem; color: var(--muted); line-height: 1.4; }
+
+    .toast-success .toast-title { color: var(--green); }
+    .toast-failed  .toast-title { color: var(--red); }
+    .toast-error   .toast-title { color: var(--yellow); }
+    .toast-info    .toast-title { color: #66aaff; }
+
+    /* ── Progress bar on toast ── */
+    .toast-bar {
+      position: absolute;
+      bottom: 0; left: 0;
+      height: 3px;
+      border-radius: 0 0 14px 14px;
+      animation: toastBar 4s linear forwards;
+    }
+    .toast { position: relative; }
+    .toast-success .toast-bar { background: var(--green); }
+    .toast-failed  .toast-bar { background: var(--red); }
+    .toast-error   .toast-bar { background: var(--yellow); }
+    .toast-info    .toast-bar { background: var(--blue); }
+
+    @keyframes toastBar {
+      from { width: 100%; }
+      to   { width: 0%; }
+    }
+
+    /* ── Overlay / modal backdrop ── */
+    #overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 8000;
+      align-items: center;
+      justify-content: center;
+      animation: fadeOverlay 0.25s ease;
+    }
+    #overlay.open { display: flex; }
+    @keyframes fadeOverlay { from { opacity: 0; } }
+
+    .modal {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px;
+      max-width: 380px;
+      width: 90%;
+      text-align: center;
+      animation: modalIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.7); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .modal-icon { font-size: 3.5rem; line-height: 1; margin-bottom: 16px; }
+    .modal h2  { font-size: 1.2rem; margin-bottom: 8px; }
+    .modal p   { font-size: 0.85rem; color: var(--muted); line-height: 1.6; margin-bottom: 20px; }
+    .modal-code {
+      font-family: monospace;
+      font-size: 0.9rem;
+      padding: 8px 14px;
+      border-radius: 8px;
+      display: inline-block;
+      margin-bottom: 20px;
+    }
+    .modal.success .modal-code { background: rgba(0,200,83,0.15); color: var(--green); }
+    .modal.failed  .modal-code { background: rgba(255,23,68,0.12);  color: var(--red); }
+    .modal.error   .modal-code { background: rgba(255,214,0,0.10);  color: var(--yellow); }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      padding: 4px 0 8px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+    }
+
+    /* ── Loading overlay on cards ── */
+    .card-loading {
+      position: relative;
+    }
+    .card-loading::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(13,13,26,0.5);
+      border-radius: 16px;
+      z-index: 10;
+    }
+
+    /* ── Color accents per card ── */
+    .accent-blue   .card-icon { background: rgba(41,121,255,0.15); }
+    .accent-green  .card-icon { background: rgba(0,200,83,0.15); }
+    .accent-purple .card-icon { background: rgba(170,0,255,0.15); }
+    .accent-orange .card-icon { background: rgba(249,168,37,0.15); }
+    .accent-teal   .card-icon { background: rgba(0,188,212,0.15); }
+    .accent-pink   .card-icon { background: rgba(233,30,99,0.15); }
+    .accent-yellow .card-icon { background: rgba(255,214,0,0.15); }
+
+    .accent-blue   .card-header { border-left: 3px solid var(--blue); }
+    .accent-green  .card-header { border-left: 3px solid var(--green); }
+    .accent-purple .card-header { border-left: 3px solid var(--purple); }
+    .accent-orange .card-header { border-left: 3px solid #f9a825; }
+    .accent-teal   .card-header { border-left: 3px solid #00bcd4; }
+    .accent-pink   .card-header { border-left: 3px solid #e91e63; }
+    .accent-yellow .card-header { border-left: 3px solid var(--yellow); }
+
+    /* ── Next step tip ── */
+    .tip-box {
+      background: rgba(41,121,255,0.08);
+      border: 1px solid rgba(41,121,255,0.25);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.78rem;
+      color: #88bbff;
+      display: none;
+      line-height: 1.5;
+    }
+    .tip-box.visible { display: block; animation: fadeIn 0.3s ease; }
+    .tip-box strong { color: #aad4ff; }
+
+    footer {
+      text-align: center;
+      padding: 20px;
+      color: var(--muted);
+      font-size: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+<div id="toast-container"></div>
+
+<div id="overlay">
+  <div class="modal" id="modal">
+    <div class="modal-icon" id="modal-icon">✅</div>
+    <h2 id="modal-title">Success</h2>
+    <div class="modal-code" id="modal-code">OT001</div>
+    <p id="modal-msg">Transaction completed successfully.</p>
+    <button class="btn btn-outline" onclick="closeModal()">Close</button>
+  </div>
+</div>
+
+<header>
+  <h1>Pamodzi Gateway Tester</h1>
+  <p>Sandbox API — Olympus Tech Pay</p>
+  <div class="server-badge">🟢 Server: https://stk-push-test.onrender.com</div>
+</header>
+
+<main>
+
+  <!-- ── 1. LOGIN ── -->
+  <div class="card accent-blue" id="card-login">
+    <div class="card-header" onclick="toggleCard('login')">
+      <div class="card-icon">🔐</div>
+      <div class="card-title">
+        <h3>User Login</h3>
+        <p>Login to the merchant dashboard</p>
+      </div>
+      <span class="method-badge badge-post">POST</span>
+      <span class="chevron" id="chev-login">▼</span>
+    </div>
+    <div class="card-body" id="body-login">
+      <div class="section-label">Credentials</div>
+      <div class="field">
+        <label>User ID (Email)</label>
+        <input type="email" id="login-userId" placeholder="user@example.com" />
+        <span class="field-hint">Up to 15 characters — your merchant email</span>
+        <span class="field-error" id="err-login-userId">User ID is required</span>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" />
+        <span class="field-hint">Up to 100 characters</span>
+        <span class="field-error" id="err-login-password">Password is required</span>
+      </div>
+      <button class="btn btn-primary" id="btn-login" onclick="doLogin()">
+        <div class="spinner" id="spin-login"></div>
+        <span id="btn-login-text">Login</span>
+      </button>
+      <div class="response-box" id="res-login">
+        <div class="response-header" id="res-login-header">
+          <div class="status-dot"></div>
+          <span id="res-login-status">—</span>
+        </div>
+        <pre class="response-body" id="res-login-body"></pre>
+        <div class="interpretation" id="res-login-interp"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 2. STK PUSH ── -->
+  <div class="card accent-green" id="card-stk">
+    <div class="card-header" onclick="toggleCard('stk')">
+      <div class="card-icon">📲</div>
+      <div class="card-title">
+        <h3>Mobile Money Request Payment (STK Push)</h3>
+        <p>Send a payment prompt to the customer's phone</p>
+      </div>
+      <span class="method-badge badge-post">POST</span>
+      <span class="chevron" id="chev-stk">▼</span>
+    </div>
+    <div class="card-body" id="body-stk">
+      <div class="section-label">Payment Details</div>
+      <div class="field">
+        <label>Client Phone Number</label>
+        <input type="tel" id="stk-phone" placeholder="2609xxxxxxxx" maxlength="15" />
+        <span class="field-hint">Zambian number — start with 260, up to 15 digits</span>
+        <span class="field-error" id="err-stk-phone">Enter a valid phone number (e.g. 2609xxxxxxxx)</span>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Amount (ZMW)</label>
+          <input type="number" id="stk-amount" placeholder="100.00" step="0.01" min="0.01" />
+          <span class="field-hint">Decimal e.g. 100.00</span>
+          <span class="field-error" id="err-stk-amount">Enter a valid positive amount</span>
+        </div>
+        <div class="field">
+          <label>Narration</label>
+          <input type="text" id="stk-narration" placeholder="Making Payments" maxlength="100" />
+          <span class="field-hint">Up to 100 characters</span>
+          <span class="field-error" id="err-stk-narration">Narration is required</span>
+        </div>
+      </div>
+      <button class="btn btn-success" id="btn-stk" onclick="doStkPush()">
+        <div class="spinner" id="spin-stk"></div>
+        <span id="btn-stk-text">Send STK Push</span>
+      </button>
+      <div class="tip-box" id="tip-stk">
+        <strong>Next step:</strong> The customer's phone will ring with a payment prompt. Once they enter their PIN, use <strong>Verify Payment</strong> below with the <code>InternalTransactionId</code> returned above.
+      </div>
+      <div class="response-box" id="res-stk">
+        <div class="response-header" id="res-stk-header">
+          <div class="status-dot"></div>
+          <span id="res-stk-status">—</span>
+        </div>
+        <pre class="response-body" id="res-stk-body"></pre>
+        <div class="interpretation" id="res-stk-interp"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3. VERIFY PAYMENT ── -->
+  <div class="card accent-purple" id="card-verify">
+    <div class="card-header" onclick="toggleCard('verify')">
+      <div class="card-icon">✅</div>
+      <div class="card-title">
+        <h3>Mobile Money Verify Payment</h3>
+        <p>Check if the customer completed the STK payment</p>
+      </div>
+      <span class="method-badge badge-get">GET</span>
+      <span class="chevron" id="chev-verify">▼</span>
+    </div>
+    <div class="card-body" id="body-verify">
+      <div class="section-label">Transaction Reference</div>
+      <div class="field">
+        <label>Internal Transaction ID</label>
+        <input type="text" id="verify-txnId" placeholder="TNXxxxxxxxxxxxx" maxlength="25" />
+        <span class="field-hint">From the STK Push response above — up to 25 chars</span>
+        <span class="field-error" id="err-verify-txnId">Transaction ID is required</span>
+      </div>
+      <div class="field">
+        <label>Client Phone Number</label>
+        <input type="tel" id="verify-phone" placeholder="2609xxxxxxxx" maxlength="15" />
+        <span class="field-hint">Same number used in the STK Push</span>
+        <span class="field-error" id="err-verify-phone">Phone number is required</span>
+      </div>
+      <button class="btn btn-primary" id="btn-verify" onclick="doVerify()">
+        <div class="spinner" id="spin-verify"></div>
+        <span id="btn-verify-text">Verify Payment</span>
+      </button>
+      <div class="response-box" id="res-verify">
+        <div class="response-header" id="res-verify-header">
+          <div class="status-dot"></div>
+          <span id="res-verify-status">—</span>
+        </div>
+        <pre class="response-body" id="res-verify-body"></pre>
+        <div class="interpretation" id="res-verify-interp"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 4. TRANSACTION SEARCH ── -->
+  <div class="card accent-orange" id="card-search">
+    <div class="card-header" onclick="toggleCard('search')">
+      <div class="card-icon">🔍</div>
+      <div class="card-title">
+        <h3>Client Transaction Search</h3>
+        <p>Search and verify a transaction from the backend</p>
+      </div>
+      <span class="method-badge badge-get">GET</span>
+      <span class="chevron" id="chev-search">▼</span>
+    </div>
+    <div class="card-body" id="body-search">
+      <div class="section-label">Search Parameters</div>
+      <div class="field">
+        <label>Client Phone Number</label>
+        <input type="tel" id="search-phone" placeholder="2609xxxxxxxx" maxlength="15" />
+        <span class="field-error" id="err-search-phone">Phone number is required</span>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Amount (ZMW)</label>
+          <input type="number" id="search-amount" placeholder="100.00" step="0.01" min="0.01" />
+          <span class="field-error" id="err-search-amount">Enter a valid amount</span>
+        </div>
+        <div class="field">
+          <label>Narration</label>
+          <input type="text" id="search-narration" placeholder="Making Payments" maxlength="100" />
+          <span class="field-error" id="err-search-narration">Narration is required</span>
+        </div>
+      </div>
+      <button class="btn btn-warning" id="btn-search" onclick="doSearch()">
+        <div class="spinner" id="spin-search"></div>
+        <span id="btn-search-text">Search Transaction</span>
+      </button>
+      <div class="response-box" id="res-search">
+        <div class="response-header" id="res-search-header">
+          <div class="status-dot"></div>
+          <span id="res-search-status">—</span>
+        </div>
+        <pre class="response-body" id="res-search-body"></pre>
+        <div class="interpretation" id="res-search-interp"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 5. ALL-IN-ONE PAYMENT ── -->
+  <div class="card accent-teal" id="card-allinone">
+    <div class="card-header" onclick="toggleCard('allinone')">
+      <div class="card-icon">⚡</div>
+      <div class="card-title">
+        <h3>Payment Verification — One Request</h3>
+        <p>Request + verify in a single call (slower)</p>
+      </div>
+      <span class="method-badge badge-post">POST</span>
+      <span class="chevron" id="chev-allinone">▼</span>
+    </div>
+    <div class="card-body" id="body-allinone">
+      <div class="section-label">Transaction ID</div>
+      <div class="field">
+        <label>txnID</label>
+        <input type="text" id="allinone-txnId" placeholder="TNXxxxxxxxxxxxx" maxlength="30" />
+        <span class="field-hint">Your own reference ID — up to 30 chars</span>
+        <span class="field-error" id="err-allinone-txnId">Transaction ID is required</span>
+      </div>
+      <div class="tip-box visible" style="display:block;background:rgba(249,168,37,0.08);border-color:rgba(249,168,37,0.3);color:#ffcc55;">
+        ⚠️ <strong>Note:</strong> This endpoint handles both payment and verification internally. It may take longer to respond. Do not use it if you need to verify separately.
+      </div>
+      <button class="btn btn-primary" id="btn-allinone" onclick="doAllInOne()">
+        <div class="spinner" id="spin-allinone"></div>
+        <span id="btn-allinone-text">Submit</span>
+      </button>
+      <div class="response-box" id="res-allinone">
+        <div class="response-header" id="res-allinone-header">
+          <div class="status-dot"></div>
+          <span id="res-allinone-status">—</span>
+        </div>
+        <pre class="response-body" id="res-allinone-body"></pre>
+        <div class="interpretation" id="res-allinone-interp"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 6. BANK LIST ── -->
+  <div class="card accent-pink" id="card-banks">
+    <div class="card-header" onclick="toggleCard('banks')">
+      <div class="card-icon">🏦</div>
+      <div class="card-title">
+        <h3>Bank List Dropdown</h3>
+        <p>Fetch all banks on the Pamodzi system</p>
+      </div>
+      <span class="method-badge badge-get">GET</span>
+      <span class="chevron" id="chev-banks">▼</span>
+    </div>
+    <div class="card-body" id="body-banks">
+      <p style="font-size:0.82rem;color:var(--muted)">No parameters needed. Click to fetch the full bank list.</p>
+      <button class="btn btn-primary" id="btn-banks" onclick="doBanks()">
+        <div class="spinner" id="spin-banks"></div>
+        <span id="btn-banks-text">Fetch Bank List</span>
+      </button>
+      <div class="response-box" id="res-banks">
+        <div class="response-header" id="res-banks-header">
+          <div class="status-dot"></div>
+          <span id="res-banks-status">—</span>
+        </div>
+        <pre class="response-body" id="res-banks-body"></pre>
+        <div class="interpretation" id="res-banks-interp"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 7. COUNTRY LIST ── -->
+  <div class="card accent-yellow" id="card-countries">
+    <div class="card-header" onclick="toggleCard('countries')">
+      <div class="card-icon">🌍</div>
+      <div class="card-title">
+        <h3>Country List Dropdown</h3>
+        <p>Fetch all countries on the Pamodzi system</p>
+      </div>
+      <span class="method-badge badge-get">GET</span>
+      <span class="chevron" id="chev-countries">▼</span>
+    </div>
+    <div class="card-body" id="body-countries">
+      <p style="font-size:0.82rem;color:var(--muted)">No parameters needed. Click to fetch the full country list.</p>
+      <button class="btn btn-primary" id="btn-countries" onclick="doCountries()">
+        <div class="spinner" id="spin-countries"></div>
+        <span id="btn-countries-text">Fetch Country List</span>
+      </button>
+      <div class="response-box" id="res-countries">
+        <div class="response-header" id="res-countries-header">
+          <div class="status-dot"></div>
+          <span id="res-countries-status">—</span>
+        </div>
+        <pre class="response-body" id="res-countries-body"></pre>
+        <div class="interpretation" id="res-countries-interp"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>Pamodzi Gateway Sandbox &nbsp;|&nbsp; Olympus Tech Pay &nbsp;|&nbsp; For testing purposes only</footer>
+
+<script>
+  const SERVER = "https://stk-push-test.onrender.com";
+
+  // ── Toggle cards ──────────────────────────────────────────
+  function toggleCard(id) {
+    const body = document.getElementById(`body-${id}`);
+    const chev = document.getElementById(`chev-${id}`);
+    const header = body.previousElementSibling;
+    const open = body.classList.toggle("open");
+    chev.classList.toggle("open", open);
+    header.classList.toggle("open", open);
+  }
+
+  // Open STK by default
+  toggleCard("stk");
+
+  // ── Validation helpers ────────────────────────────────────
+  function validate(id, condition, errId) {
+    const el = document.getElementById(id);
+    const err = document.getElementById(errId);
+    if (!condition) {
+      el.classList.add("error");
+      err.style.display = "block";
+      el.addEventListener("input", () => {
+        el.classList.remove("error");
+        err.style.display = "none";
+      }, { once: true });
+      return false;
+    }
+    el.classList.remove("error");
+    err.style.display = "none";
+    return true;
+  }
+
+  function val(id) { return document.getElementById(id)?.value.trim(); }
+  function isPhone(v) { return /^260[0-9]{9,12}$/.test(v.replace(/\s/g, "")); }
+  function isAmount(v) { return !isNaN(v) && parseFloat(v) > 0; }
+
+  // ── Loading state ─────────────────────────────────────────
+  function setLoading(key, loading) {
+    const btn  = document.getElementById(`btn-${key}`);
+    const spin = document.getElementById(`spin-${key}`);
+    const text = document.getElementById(`btn-${key}-text`);
+    btn.disabled  = loading;
+    spin.style.display = loading ? "block" : "none";
+    text.textContent   = loading ? "Please wait…" : text.dataset.label || text.textContent;
+  }
+
+  // ── Show response ─────────────────────────────────────────
+  function showResponse(key, data, httpStatus) {
+    const box    = document.getElementById(`res-${key}`);
+    const header = document.getElementById(`res-${key}-header`);
+    const status = document.getElementById(`res-${key}-status`);
+    const body   = document.getElementById(`res-${key}-body`);
+    const interp = document.getElementById(`res-${key}-interp`);
+
+    const code   = data?.pamodzi?.errorCode || (httpStatus === 401 ? "401" : "—");
+    const interText = data?.interpretation || data?.error || "No interpretation available.";
+    const nextStep  = data?.nextStep || null;
+
+    let cls = "error", icon = "⚠️", label = "SYSTEM";
+    if (code === "OT001") { cls = "success"; icon = "✅"; label = "SUCCESS — OT001"; }
+    else if (code === "OT002") { cls = "failed";  icon = "❌"; label = "FAILED — OT002"; }
+    else if (code === "401" || httpStatus === 401) { cls = "failed"; icon = "🔒"; label = "UNAUTHORIZED — 401"; }
+
+    header.className = `response-header ${cls}`;
+    status.textContent = `HTTP ${httpStatus}  ·  ${label}`;
+    body.textContent   = JSON.stringify(data, null, 2);
+    interp.textContent = `ℹ️  ${interText}`;
+    box.classList.add("visible");
+
+    // Tip box
+    const tip = document.getElementById(`tip-${key}`);
+    if (tip) tip.classList.toggle("visible", !!nextStep);
+
+    // Modal popup
+    showModal(cls, code, interText, icon);
+
+    // Toast
+    showToast(cls, label, interText);
+  }
+
+  // ── Toast ─────────────────────────────────────────────────
+  function showToast(type, title, msg) {
+    const container = document.getElementById("toast-container");
+    const toast = document.createElement("div");
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `
+      <div class="toast-icon">${type === "success" ? "✅" : type === "failed" ? "❌" : "⚠️"}</div>
+      <div class="toast-content">
+        <div class="toast-title">${title}</div>
+        <div class="toast-msg">${msg.slice(0, 90)}</div>
+      </div>
+      <div class="toast-bar"></div>
+    `;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.classList.add("removing");
+      setTimeout(() => toast.remove(), 350);
+    }, 4200);
+  }
+
+  // ── Modal ─────────────────────────────────────────────────
+  function showModal(type, code, msg, icon) {
+    const overlay = document.getElementById("overlay");
+    const modal   = document.getElementById("modal");
+    document.getElementById("modal-icon").textContent  = icon;
+    document.getElementById("modal-title").textContent = type === "success" ? "Success!" : type === "failed" ? "Failed" : "System Error";
+    document.getElementById("modal-code").textContent  = code;
+    document.getElementById("modal-msg").textContent   = msg;
+    modal.className = `modal ${type}`;
+    overlay.classList.add("open");
+  }
+  function closeModal() {
+    document.getElementById("overlay").classList.remove("open");
+  }
+  document.getElementById("overlay").addEventListener("click", function(e) {
+    if (e.target === this) closeModal();
+  });
+
+  // ── Error handler ─────────────────────────────────────────
+  function handleFetchError(key, err) {
+    setLoading(key, false);
+    const msg = err.message || "Network error";
+    showToast("error", "Connection Error", msg);
+    const box  = document.getElementById(`res-${key}`);
+    const hdr  = document.getElementById(`res-${key}-header`);
+    const body = document.getElementById(`res-${key}-body`);
+    const interp = document.getElementById(`res-${key}-interp`);
+    hdr.className = "response-header error";
+    document.getElementById(`res-${key}-status`).textContent = "Network Error";
+    body.textContent = msg;
+    interp.textContent = "⚠️ Could not reach the server. Check your internet connection and that the server is running.";
+    box.classList.add("visible");
+  }
+
+  // ── 1. Login ──────────────────────────────────────────────
+  async function doLogin() {
+    const userId   = val("login-userId");
+    const password = val("login-password");
+    let ok = true;
+    if (!validate("login-userId",   userId.length > 0, "err-login-userId"))   ok = false;
+    if (!validate("login-password", password.length > 0, "err-login-password")) ok = false;
+    if (!ok) return;
+
+    setLoading("login", true);
+    showToast("info", "Logging in…", "Sending credentials to Pamodzi.");
+    try {
+      const res  = await fetch(`${SERVER}/api/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, password }),
+      });
+      const data = await res.json();
+      setLoading("login", false);
+      showResponse("login", data, res.status);
+    } catch (e) { handleFetchError("login", e); }
+  }
+
+  // ── 2. STK Push ───────────────────────────────────────────
+  async function doStkPush() {
+    const phone    = val("stk-phone");
+    const amount   = val("stk-amount");
+    const narration = val("stk-narration");
+    let ok = true;
+    if (!validate("stk-phone",    isPhone(phone),    "err-stk-phone"))    ok = false;
+    if (!validate("stk-amount",   isAmount(amount),  "err-stk-amount"))   ok = false;
+    if (!validate("stk-narration", narration.length > 0, "err-stk-narration")) ok = false;
+    if (!ok) return;
+
+    setLoading("stk", true);
+    showToast("info", "Sending STK Push…", `Prompting ${phone} for ZMW ${amount}`);
+    try {
+      const res  = await fetch(`${SERVER}/api/mobile/request-payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientPhoneNumber: phone, clientNarration: narration, amount: parseFloat(amount) }),
+      });
+      const data = await res.json();
+      setLoading("stk", false);
+      showResponse("stk", data, res.status);
+
+      // Auto-fill verify section if successful
+      const internalId = data?.pamodzi?.InternalTransactionId || data?.pamodzi?.internalTransactionId;
+      if (internalId) {
+        document.getElementById("verify-txnId").value = internalId;
+        document.getElementById("verify-phone").value = phone;
+        if (!document.getElementById("body-verify").classList.contains("open")) toggleCard("verify");
+      }
+    } catch (e) { handleFetchError("stk", e); }
+  }
+
+  // ── 3. Verify Payment ─────────────────────────────────────
+  async function doVerify() {
+    const txnId = val("verify-txnId");
+    const phone = val("verify-phone");
+    let ok = true;
+    if (!validate("verify-txnId", txnId.length > 0,  "err-verify-txnId")) ok = false;
+    if (!validate("verify-phone", isPhone(phone),     "err-verify-phone")) ok = false;
+    if (!ok) return;
+
+    setLoading("verify", true);
+    showToast("info", "Verifying…", `Checking transaction ${txnId}`);
+    try {
+      const res  = await fetch(`${SERVER}/api/mobile/verify-payment?InternalTransactionId=${encodeURIComponent(txnId)}&ClientPhoneNumber=${encodeURIComponent(phone)}`);
+      const data = await res.json();
+      setLoading("verify", false);
+      showResponse("verify", data, res.status);
+    } catch (e) { handleFetchError("verify", e); }
+  }
+
+  // ── 4. Transaction Search ─────────────────────────────────
+  async function doSearch() {
+    const phone    = val("search-phone");
+    const amount   = val("search-amount");
+    const narration = val("search-narration");
+    let ok = true;
+    if (!validate("search-phone",    isPhone(phone),    "err-search-phone"))    ok = false;
+    if (!validate("search-amount",   isAmount(amount),  "err-search-amount"))   ok = false;
+    if (!validate("search-narration", narration.length > 0, "err-search-narration")) ok = false;
+    if (!ok) return;
+
+    setLoading("search", true);
+    showToast("info", "Searching…", "Querying Pamodzi transaction records.");
+    try {
+      const res  = await fetch(`${SERVER}/api/transaction-search?clientPhoneNumber=${encodeURIComponent(phone)}&clientNarration=${encodeURIComponent(narration)}&amount=${amount}`);
+      const data = await res.json();
+      setLoading("search", false);
+      showResponse("search", data, res.status);
+    } catch (e) { handleFetchError("search", e); }
+  }
+
+  // ── 5. All-in-one ─────────────────────────────────────────
+  async function doAllInOne() {
+    const txnId = val("allinone-txnId");
+    if (!validate("allinone-txnId", txnId.length > 0, "err-allinone-txnId")) return;
+
+    setLoading("allinone", true);
+    showToast("info", "Processing…", "This may take longer than usual.");
+    try {
+      const res  = await fetch(`${SERVER}/api/mobile/request-verify-payment`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ txnID: txnId }),
+      });
+      const data = await res.json();
+      setLoading("allinone", false);
+      showResponse("allinone", data, res.status);
+    } catch (e) { handleFetchError("allinone", e); }
+  }
+
+  // ── 6. Bank List ──────────────────────────────────────────
+  async function doBanks() {
+    setLoading("banks", true);
+    showToast("info", "Fetching banks…", "Loading bank list from Pamodzi.");
+    try {
+      const res  = await fetch(`${SERVER}/api/dropdown/banks`);
+      const data = await res.json();
+      setLoading("banks", false);
+      showResponse("banks", data, res.status);
+    } catch (e) { handleFetchError("banks", e); }
+  }
+
+  // ── 7. Country List ───────────────────────────────────────
+  async function doCountries() {
+    setLoading("countries", true);
+    showToast("info", "Fetching countries…", "Loading country list from Pamodzi.");
+    try {
+      const res  = await fetch(`${SERVER}/api/dropdown/countries`);
+      const data = await res.json();
+      setLoading("countries", false);
+      showResponse("countries", data, res.status);
+    } catch (e) { handleFetchError("countries", e); }
+  }
+</script>
+</body>
+</html>
